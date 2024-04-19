@@ -1,0 +1,314 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard - My Wallet{% endblock %}
+
+{% block content %}
+
+<ul class="nav nav-tabs" id="myTab" role="tablist">
+    <li class="nav-item">
+        <a class="nav-link active" id="wallet-tab" data-toggle="tab" href="#wallet" role="tab" aria-controls="wallet" aria-selected="true">Wallet</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" id="debit-transactions-tab" data-toggle="tab" href="#debit-transactions" role="tab" aria-controls="debit-transactions-tab" aria-selected="false">Debit</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" id="credit-transactions-tab" data-toggle="tab" href="#credit-transactions" role="tab" aria-controls="credit-transactions-tab" aria-selected="false">Credit</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" id="history-tab" data-toggle="tab" href="#history" role="tab" aria-controls="history" aria-selected="false">Transaction History</a>
+    </li>    
+</ul>
+<div class="tab-content" id="myTabContent">
+    <div class="tab-pane fade show active" id="wallet" role="tabpanel" aria-labelledby="wallet-tab">
+        <div class="container mt-3">
+            <h2>Welcome, <span id="user-name"></span></h2>
+            <h3>Wallet Balances</h3>
+            <ul id="balance-list" class="list-group">
+            </ul>
+            <button id="add-wallet-btn" class="btn btn-primary mt-3" data-toggle="modal" data-target="#addWalletModal">Add New Wallet</button>        </div>
+    </div>
+    <div class="tab-pane fade" id="debit-transactions" role="tabpanel" aria-labelledby="debit-transactions-tab">
+        <div class="container mt-3">
+            <h3>Debit</h3>
+            <div class="form-group">
+                <label for="transaction-wallet">Wallet Type:</label>
+                <select class="form-control" id="transaction-wallet-debit">
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="transaction-amount">Amount:</label>
+                <input type="number" class="form-control" id="transaction-amount-debit" placeholder="Enter amount" required>
+            </div>
+            <div id="error-message-debit">    
+            </div>
+            <div id="success-message-debit">    
+            </div>
+            <button id="debit-transaction-submit" class="btn btn-primary">Submit</button>
+        </div>
+    </div>
+    <div class="tab-pane fade" id="credit-transactions" role="tabpanel" aria-labelledby="credit-transactions-tab">
+        <div class="container mt-3">
+            <h3>Credit</h3>
+            <div class="form-group">
+                <label for="transaction-wallet">Wallet Type:</label>
+                <select class="form-control" id="transaction-wallet-credit" required>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="transaction-amount">Amount:</label>
+                <input type="number" class="form-control" id="transaction-amount-credit" placeholder="Enter amount" required>
+            </div>
+            <div id="error-message-credit">    
+            </div>
+            <div id="success-message-credit">    
+            </div>
+            <button id="credit-transaction-submit" class="btn btn-primary">Submit</button>
+        </div>
+    </div>
+    <div class="tab-pane fade" id="history" role="tabpanel" aria-labelledby="history-tab">
+        <div class="container mt-3">
+            <h3>Transaction History</h3>
+            <div class="form-group">
+                <label for="start-date">Start Date:</label>
+                <input type="date" class="form-control" id="start-date" required>
+            </div>
+            <div class="form-group">
+                <label for="end-date">End Date:</label>
+                <input type="date" class="form-control" id="end-date" required>
+            </div>
+            <div class="form-group">
+                <label for="history-wallet">Wallet Type:</label>
+                <select class="form-control" id="history-wallet">
+                </select>
+            </div>
+            <button id="history-submit" class="btn btn-primary">Fetch History</button>
+            <table id="history-table" class="table mt-3">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Transaction Type</th>
+                        <th>Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+
+<div class="modal fade" id="addWalletModal" tabindex="-1" role="dialog" aria-labelledby="addWalletModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addWalletModalLabel">Add New Wallet</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="add-wallet-form">
+                    <div class="form-group">
+                        <label for="wallet-type">Wallet Type:</label>
+                        <select class="form-control" id="wallet-type" required>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" id="add-wallet-submit">Add Wallet</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    fetch('/api/user/me')
+    .then(response => response.json())
+    .then(data => {
+        document.getElementById('user-name').innerText = data.user;
+    })
+    .catch(error => console.error('Error fetching user:', error));
+
+    fetch('/api/user/me/balance')
+    .then(response => response.json())
+    .then(data => {
+        const balanceList = document.getElementById('balance-list');
+        const transactionWalletDebit = document.getElementById('transaction-wallet-debit');
+        const transactionWalletCredit = document.getElementById('transaction-wallet-credit');
+        const historyWalllet = document.getElementById('history-wallet');
+        
+        balanceList.innerHTML = '';
+
+        Object.keys(data).forEach(wallet => {
+            const listItem = document.createElement('li');
+            listItem.classList.add('list-group-item');
+            listItem.innerHTML = `<strong>${wallet.toUpperCase()}</strong>: ${data[wallet]}`;
+            balanceList.appendChild(listItem);
+
+            const debitOption = document.createElement('option');
+            debitOption.value = wallet;
+            debitOption.text = wallet.toUpperCase();
+
+            transactionWalletDebit.appendChild(debitOption);
+
+            const creditOption = document.createElement('option');
+            creditOption.value = wallet;
+            creditOption.text = wallet.toUpperCase();
+
+            transactionWalletCredit.appendChild(creditOption);
+
+            const historyOption = document.createElement('option');
+            historyOption.value = wallet;
+            historyOption.text = wallet.toUpperCase();
+
+            historyWalllet.appendChild(historyOption);            
+        });
+    })
+    .catch(error => console.error('Error fetching balances:', error));
+
+    fetch('/api/wallets')
+    .then(response => response.json())
+    .then(data => {
+        const walletTypeSelect = document.getElementById('wallet-type');
+        data.forEach(wallet => {
+            const option = document.createElement('option');
+            option.value = wallet;
+            option.text = wallet.toUpperCase();
+            walletTypeSelect.appendChild(option);
+        });
+    })
+    .catch(error => console.error('Error fetching wallet types:', error));
+
+    document.getElementById('credit-transaction-submit').addEventListener('click', function() {
+        const walletType = document.getElementById('transaction-wallet-credit').value;
+        const amount = document.getElementById('transaction-amount-credit').value;
+
+        fetch('/api/transaction/credit', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ wallet_type: walletType, amount: amount })
+        })        
+        .then(response => {
+            if (response.ok) {
+                document.getElementById('success-message-credit').innerHTML = `
+                    <div class="alert alert-success" role="alert">
+                        Amount Credited Successfully
+                    </div>`
+                setTimeout(() => {
+                    location.reload()                    
+                }, (1000));
+            } else {
+                return response.json()
+            }
+        })
+        .then(data => {
+            if(data && data.message) {
+                document.getElementById('error-message-credit').innerHTML = `
+                    <div class="alert alert-danger" role="alert">
+                        ${data.message}
+                    </div>`;
+            }
+        })
+        .catch(error => alert('Error crediting amount, please try after sometime:', error));    
+    });
+
+
+    document.getElementById('debit-transaction-submit').addEventListener('click', function() {
+        const walletType = document.getElementById('transaction-wallet-debit').value;
+        const amount = document.getElementById('transaction-amount-debit').value;
+
+        fetch('/api/transaction/debit', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ wallet_type: walletType, amount: amount })
+        })        
+        .then(response => {
+            if (response.ok) {
+                document.getElementById('success-message-debit').innerHTML = `
+                    <div class="alert alert-success" role="alert">
+                        Amount Debited Successfully
+                    </div>`
+                setTimeout(() => {
+                    location.reload()                    
+                }, (1000));
+            } else {
+                return response.json()
+            }
+        })
+        .then(data => {
+            if(data && data.message) {
+                document.getElementById('error-message-debit').innerHTML = `
+                    <div class="alert alert-danger" role="alert">
+                        ${data.message}
+                    </div>`;
+            }
+        })
+        .catch(error => alert('Error debiting amount, please try after sometime:', error));    
+    });
+
+    document.getElementById('add-wallet-submit').addEventListener('click', function() {
+        const walletType = document.getElementById('wallet-type').value;
+
+        fetch('/api/user/me/wallet', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ wallet_type: walletType})
+        })
+        .then(response => {
+            if (response.ok) {
+                alert('Wallet added successfully!');
+                location.reload(); // Refresh the page to update balances
+            } else {
+                throw new Error('Failed to add wallet');
+            }
+        })
+        .catch(error => {
+            console.error('Error adding wallet:', error);
+            alert('Failed to add wallet. Please try again.');
+        });
+    });
+
+    document.getElementById('history-submit').addEventListener('click', function() {
+        const startDate = document.getElementById('start-date').value;
+        const endDate = document.getElementById('end-date').value;
+        const walletType = document.getElementById('history-wallet').value;
+
+        var url = `/api/transactions?start_date=${startDate}&end_date=${endDate}&wallet_type=${walletType}`;
+
+        fetch(url)
+        .then(response => response.json())
+        .then(data => {
+            var tableBody = document.getElementById('history-table').getElementsByTagName('tbody')[0];
+            tableBody.innerHTML = '';
+
+            data.forEach(transaction => {
+                var row = tableBody.insertRow();
+                var dateCell = row.insertCell(0);
+                var typeCell = row.insertCell(1);
+                var amountCell = row.insertCell(2);
+
+                dateCell.innerText = transaction.date;
+                typeCell.innerText = transaction.type.toUpperCase();
+                amountCell.innerText = `INR ${transaction.amount}`;
+            });
+        })
+        .catch(error => {
+            console.error('Error fetching transaction history:', error);
+            alert('Failed to fetch transaction history. Please try again.');
+        });
+    });
+</script>
+{% endblock %}
+

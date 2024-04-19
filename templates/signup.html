@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+
+{% block title %}Signup - My App{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div id="signup-form" class="text-center mt-5">
+            <h2>Sign Up</h2>
+            <form id="signup-form" action="/signup" method="POST">
+                <div class="form-group">
+                    <input type="text" class="form-control" id="username-input" name="username" placeholder="Enter your username" required>
+                </div>
+                <div id="error-message">    
+                </div>
+                <button type="submit" class="btn btn-primary btn-block">Sign Up</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.getElementById('signup-form').addEventListener('submit', function(event) {
+        event.preventDefault();
+
+        var username = document.getElementById('username-input').value;
+
+        fetch('/api/user', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ username: username })
+        })
+        .then(response => {
+            if (response.ok) {
+                window.location.href = '/dashboard';
+            }
+            return response.json()
+        })
+        .then(data => {
+            if(data && data.message) {
+                document.getElementById('error-message').innerHTML = `
+                    <div class="alert alert-danger" role="alert">
+                        ${data.message}
+                    </div>`;
+            }
+        })
+        .catch(error => {
+            console.error('Signup error:', error);
+            const errorMessage = 'Login failed. Please try again.';
+            document.getElementById('error-message').innerHTML = `
+                    <div class="alert alert-danger" role="alert">
+                        ${errorMessage}
+                    </div>`
+        });
+    });
+</script>
+{% endblock %}
